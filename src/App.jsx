@@ -35,7 +35,9 @@ import {
   Trash2,
   Search,
   CheckCircle,
-  XCircle
+  XCircle,
+  Brain,
+  Camera
 } from 'lucide-react';
 
 import LandingPage from './views/landing/LandingPage';
@@ -192,7 +194,405 @@ function Avatar({ type, size = 40, photoUrl = '', style = {} }) {
   );
 }
 
-export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, schoolData, setSchoolData }) {
+export function OnlineEnrollmentWizard({ onBack, onSaveEnrollment, classes }) {
+  const [step, setStep] = useState(1);
+  
+  // Responsavel
+  const [parentName, setParentName] = useState('');
+  const [parentCpf, setParentCpf] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [parentCep, setParentCep] = useState('');
+  const [parentAddress, setParentAddress] = useState('');
+  
+  // Aluno
+  const [studentName, setStudentName] = useState('');
+  const [studentBirth, setStudentBirth] = useState('');
+  const [studentGender, setStudentGender] = useState('Masculino');
+  const [classRequested, setClassRequested] = useState('1º Ano B');
+  const [prevSchool, setPrevSchool] = useState('');
+  const [specialNeeds, setSpecialNeeds] = useState('Não');
+  const [specialNeedsDesc, setSpecialNeedsDesc] = useState('');
+
+  // OCR state
+  const [ocrScanning, setOcrScanning] = useState(false);
+  const [ocrDocType, setOcrDocType] = useState('');
+  const [docs, setDocs] = useState({
+    certidao: { name: '', size: '', status: 'Pendente' },
+    rg: { name: '', size: '', status: 'Pendente' },
+    residencia: { name: '', size: '', status: 'Pendente' }
+  });
+
+  const [contractAccepted, setContractAccepted] = useState(false);
+  const [signature, setSignature] = useState('');
+  const [protocol, setProtocol] = useState('');
+
+  const handleFileUpload = (docKey, file) => {
+    if (!file) return;
+    setOcrScanning(true);
+    setOcrDocType(docKey === 'certidao' ? 'Certidão de Nascimento' : docKey === 'rg' ? 'RG do Responsável' : 'Comprovante de Residência');
+    
+    // Simula processamento de OCR por 2 segundos
+    setTimeout(() => {
+      setOcrScanning(false);
+      setDocs(prev => ({
+        ...prev,
+        [docKey]: {
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + ' KB',
+          status: 'Validado'
+        }
+      }));
+      // Auto-preenche alguns dados simulados
+      if (docKey === 'rg' && !parentName) {
+        setParentName('Ivan Ramos');
+        setParentCpf('123.456.789-00');
+      }
+      if (docKey === 'certidao' && !studentName) {
+        setStudentName('Henrique Ramos');
+      }
+    }, 2000);
+  };
+
+  const handleFinish = (e) => {
+    e.preventDefault();
+    if (!contractAccepted) {
+      alert("Você deve aceitar os termos do contrato!");
+      return;
+    }
+    if (!signature.trim()) {
+      alert("Por favor, digite seu nome completo para assinar.");
+      return;
+    }
+
+    const newProtocol = 'MAT-2026-' + Math.floor(10000 + Math.random() * 90000);
+    setProtocol(newProtocol);
+
+    const enrollmentData = {
+      id: Date.now(),
+      protocol: newProtocol,
+      parentName,
+      parentCpf,
+      parentEmail,
+      parentPhone,
+      parentCep,
+      parentAddress,
+      studentName,
+      studentBirth,
+      studentGender,
+      classRequested,
+      prevSchool,
+      specialNeeds,
+      specialNeedsDesc,
+      docs,
+      signature,
+      status: 'Pendente',
+      dateSubmitted: new Date().toLocaleDateString('pt-BR')
+    };
+
+    onSaveEnrollment(enrollmentData);
+    setStep(5);
+  };
+
+  return (
+    <div className="onboarding-card" style={{ maxWidth: '750px', margin: '2rem auto' }}>
+      
+      {/* Indicador de Passos */}
+      <div className="step-indicator-bar" style={{ marginBottom: '2rem' }}>
+        <div className={`step-node ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>1</div>
+        <div className={`step-node ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>2</div>
+        <div className={`step-node ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>3</div>
+        <div className={`step-node ${step >= 4 ? 'active' : ''} ${step > 4 ? 'completed' : ''}`}>4</div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1.25rem' }}>
+          {step === 1 && 'Passo 1: Dados do Responsável Legal'}
+          {step === 2 && 'Passo 2: Dados do Aluno'}
+          {step === 3 && 'Passo 3: Envio de Documentos (OCR Inteligente)'}
+          {step === 4 && 'Passo 4: Contrato de Prestação de Serviços'}
+          {step === 5 && 'Pré-Matrícula Efetuada com Sucesso!'}
+        </h3>
+        {step < 5 && (
+          <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={onBack}>
+            Cancelar
+          </button>
+        )}
+      </div>
+
+      {/* PASSO 1: DADOS DO RESPONSÁVEL */}
+      {step === 1 && (
+        <form onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Nome Completo do Responsável</label>
+              <input type="text" className="form-input" value={parentName} onChange={e => setParentName(e.target.value)} required placeholder="Ex: Ivan Ramos" />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>CPF</label>
+              <input type="text" className="form-input" value={parentCpf} onChange={e => setParentCpf(e.target.value)} required placeholder="Ex: 123.456.789-00" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>E-mail de Contato</label>
+              <input type="email" className="form-input" value={parentEmail} onChange={e => setParentEmail(e.target.value)} required placeholder="Ex: ivan.ramos@email.com" />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Celular / WhatsApp</label>
+              <input type="text" className="form-input" value={parentPhone} onChange={e => setParentPhone(e.target.value)} required placeholder="Ex: (11) 99999-8888" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '1rem', marginTop: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>CEP</label>
+              <input type="text" className="form-input" value={parentCep} onChange={e => setParentCep(e.target.value)} required placeholder="01311-200" />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Endereço Completo</label>
+              <input type="text" className="form-input" value={parentAddress} onChange={e => setParentAddress(e.target.value)} required placeholder="Ex: Av. Paulista, 1000 - Apto 12" />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
+            <button type="submit" className="btn btn-primary">Avançar para Dados do Aluno</button>
+          </div>
+        </form>
+      )}
+
+      {/* PASSO 2: DADOS DO ALUNO */}
+      {step === 2 && (
+        <form onSubmit={(e) => { e.preventDefault(); setStep(3); }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Nome Completo do Aluno</label>
+              <input type="text" className="form-input" value={studentName} onChange={e => setStudentName(e.target.value)} required placeholder="Ex: Henrique Ramos" />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Data de Nascimento</label>
+              <input type="text" className="form-input" value={studentBirth} onChange={e => setStudentBirth(e.target.value)} required placeholder="Ex: 10/04/2020" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Gênero</label>
+              <select className="form-select" value={studentGender} onChange={e => setStudentGender(e.target.value)}>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Série / Ano Pretendido</label>
+              <select className="form-select" value={classRequested} onChange={e => setClassRequested(e.target.value)}>
+                {classes.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+                <option value="1º Ano B">1º Ano B (Preschool)</option>
+                <option value="Maternal I">Maternal I</option>
+                <option value="Maternal II">Maternal II</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem', marginTop: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Escola de Origem (Caso exista)</label>
+              <input type="text" className="form-input" value={prevSchool} onChange={e => setPrevSchool(e.target.value)} placeholder="Ex: Creche Pequenos Passos" />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700 }}>Necessidades Especiais?</label>
+              <select className="form-select" value={specialNeeds} onChange={e => setSpecialNeeds(e.target.value)}>
+                <option value="Não">Não</option>
+                <option value="Sim">Sim</option>
+              </select>
+            </div>
+          </div>
+
+          {specialNeeds === 'Sim' && (
+            <div className="form-group" style={{ marginTop: '0.75rem' }}>
+              <label className="form-label" style={{ fontWeight: 700 }}>Descreva as necessidades do aluno</label>
+              <textarea className="form-textarea" rows={2} value={specialNeedsDesc} onChange={e => setSpecialNeedsDesc(e.target.value)} placeholder="Ex: Necessita de acompanhamento para locomoção..." required></textarea>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>Voltar</button>
+            <button type="submit" className="btn btn-primary">Avançar para Documentos</button>
+          </div>
+        </form>
+      )}
+
+      {/* PASSO 3: UPLOAD DE DOCUMENTOS COM MOCK OCR */}
+      {step === 3 && (
+        <div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+            Envie fotos legíveis ou arquivos em PDF dos documentos solicitados. Nosso sistema processa as informações em tempo real via IA (OCR).
+          </p>
+
+          {/* Animação do Scanner OCR */}
+          {ocrScanning && (
+            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+              <div className="ocr-scan-progress-bar"></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', zIndex: 2, position: 'relative' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'spin 1.5s infinite linear' }}>
+                  ⏳
+                </div>
+                <div>
+                  <strong style={{ fontSize: '0.85rem', color: 'var(--primary-color)' }}>Processando {ocrDocType} por IA...</strong>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>Extraindo dados textuais e validando integridade do documento.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Certidao do Aluno */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+              <div>
+                <strong style={{ fontSize: '0.85rem', display: 'block' }}>Certidão de Nascimento do Aluno</strong>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                  {docs.certidao.status === 'Validado' ? `✓ Arquivo: ${docs.certidao.name} (${docs.certidao.size})` : 'Aguardando envio do arquivo (Requerido)'}
+                </span>
+              </div>
+              <div>
+                <label className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', cursor: 'pointer', backgroundColor: docs.certidao.status === 'Validado' ? '#e8f5e9' : '', color: docs.certidao.status === 'Validado' ? '#2e7d32' : '' }}>
+                  {docs.certidao.status === 'Validado' ? '✓ Enviado' : 'Carregar Documento'}
+                  <input type="file" style={{ display: 'none' }} accept="image/*,application/pdf" onChange={e => handleFileUpload('certidao', e.target.files[0])} />
+                </label>
+              </div>
+            </div>
+
+            {/* RG do Responsavel */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+              <div>
+                <strong style={{ fontSize: '0.85rem', display: 'block' }}>RG ou CNH do Responsável</strong>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                  {docs.rg.status === 'Validado' ? `✓ Arquivo: ${docs.rg.name} (${docs.rg.size})` : 'Aguardando envio do arquivo (Requerido)'}
+                </span>
+              </div>
+              <div>
+                <label className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', cursor: 'pointer', backgroundColor: docs.rg.status === 'Validado' ? '#e8f5e9' : '', color: docs.rg.status === 'Validado' ? '#2e7d32' : '' }}>
+                  {docs.rg.status === 'Validado' ? '✓ Enviado' : 'Carregar Documento'}
+                  <input type="file" style={{ display: 'none' }} accept="image/*,application/pdf" onChange={e => handleFileUpload('rg', e.target.files[0])} />
+                </label>
+              </div>
+            </div>
+
+            {/* Comprovante de Residencia */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+              <div>
+                <strong style={{ fontSize: '0.85rem', display: 'block' }}>Comprovante de Residência</strong>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                  {docs.residencia.status === 'Validado' ? `✓ Arquivo: ${docs.residencia.name} (${docs.residencia.size})` : 'Aguardando envio do arquivo (Requerido)'}
+                </span>
+              </div>
+              <div>
+                <label className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', cursor: 'pointer', backgroundColor: docs.residencia.status === 'Validado' ? '#e8f5e9' : '', color: docs.residencia.status === 'Validado' ? '#2e7d32' : '' }}>
+                  {docs.residencia.status === 'Validado' ? '✓ Enviado' : 'Carregar Documento'}
+                  <input type="file" style={{ display: 'none' }} accept="image/*,application/pdf" onChange={e => handleFileUpload('residencia', e.target.files[0])} />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>Voltar</button>
+            <button 
+              type="button" 
+              className="btn btn-primary"
+              disabled={docs.certidao.status !== 'Validado' || docs.rg.status !== 'Validado' || docs.residencia.status !== 'Validado'}
+              onClick={() => setStep(4)}
+            >
+              Avançar para Contrato
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PASSO 4: CONTRATO DE PRESTACAO DE SERVICOS & ASSINATURA */}
+      {step === 4 && (
+        <form onSubmit={handleFinish}>
+          <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: '#fafafa', height: '180px', overflowY: 'auto', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1rem' }}>
+            <h4 style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem', fontSize: '0.8rem' }}>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</h4>
+            <p>Pelo presente instrumento, a instituição e o responsável legal do aluno qualificado no Passo 1 ajustam as cláusulas gerais de prestação de serviços escolares para o período letivo correspondente:</p>
+            <p style={{ marginTop: '0.5rem' }}><strong>Cláusula 1ª:</strong> A escola obriga-se a ministrar o ensino programado na série selecionada para o ano letivo, conforme o Projeto Político Pedagógico.</p>
+            <p style={{ marginTop: '0.5rem' }}><strong>Cláusula 2ª:</strong> Em contrapartida, o contratante compromete-se a efetuar o pagamento das parcelas de anuidade na data estipulada em boleto bancário.</p>
+            <p style={{ marginTop: '0.5rem' }}><strong>Cláusula 3ª:</strong> O descumprimento dos prazos de entrega de documentos obrigatórios acarretará restrições na expedição de históricos escolares futuros.</p>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
+              <input type="checkbox" checked={contractAccepted} onChange={e => setContractAccepted(e.target.checked)} required />
+              Li e aceito integralmente os termos do contrato escolar acima.
+            </label>
+          </div>
+
+          {/* Campo de Assinatura Digital */}
+          <div className="form-group">
+            <label className="form-label" style={{ fontWeight: 700 }}>Assinatura Digital (Digite seu nome completo igual ao RG)</label>
+            <input 
+              type="text" 
+              className="form-input" 
+              value={signature} 
+              onChange={e => setSignature(e.target.value)} 
+              required 
+              placeholder="Ex: Ivan Ramos"
+              style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.1rem', letterSpacing: '1px' }}
+            />
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem' }}>
+              Esta assinatura equivale à assinatura de próprio punho sob fé pública digital.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setStep(3)}>Voltar</button>
+            <button type="submit" className="btn btn-primary">Finalizar e Emitir Protocolo</button>
+          </div>
+        </form>
+      )}
+
+      {/* PASSO 5: SUCESSO E PROTOCOLO */}
+      {step === 5 && (
+        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+          <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#f0fdf4', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyArea: 'center', justifyContent: 'center', fontSize: '1.5rem', margin: '0 auto 1rem auto' }}>
+            ✓
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>Pré-Matrícula Recebida!</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '500px', margin: '0 auto 1.5rem auto' }}>
+            Sua solicitação foi enviada para o banco de dados da secretaria escolar e será analisada no prazo de até 48 horas.
+          </p>
+
+          <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem', backgroundColor: '#f8fafc', maxWidth: '350px', margin: '0 auto 2rem auto', fontSize: '0.85rem' }}>
+            <span style={{ color: 'var(--text-secondary)', display: 'block' }}>Número do Protocolo</span>
+            <strong style={{ fontSize: '1.3rem', color: 'var(--primary-color)', display: 'block', marginTop: '0.25rem', letterSpacing: '1px' }}>
+              {protocol}
+            </strong>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.5rem' }}>
+              Aluno(a): {studentName} <br />
+              Série: {classRequested}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+            <button className="btn btn-secondary" onClick={() => alert("Simulando download do PDF do comprovante de pré-matrícula...")}>
+              Baixar Comprovante
+            </button>
+            <button className="btn btn-primary" onClick={onBack}>
+              Voltar ao Início
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, schoolData, setSchoolData, enrollments, setEnrollments }) {
   // === ESTADOS DE NAVEGAÇÃO E PERFIL ===
   const [currentRole, setCurrentRole] = useState('parent'); // 'manager' | 'teacher' | 'parent'
   const [activeTab, setActiveTab] = useState('home'); // 'cronograma', 'diretoria', 'home', 'painel', 'secretaria'
@@ -200,6 +600,44 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
   // Sub-Views
   const [cronoSubView, setCronoSubView] = useState('list'); // 'list', 'points', 'add-crono', 'add-points'
   const [secreSubView, setSecreSubView] = useState('menu'); // 'menu', 'grades-audit', 'docs', 'enrolls', 'add-cert'
+  
+  // Novos Estados (Super-Implementação)
+  const [facialScanStatus, setFacialScanStatus] = useState('idle');
+  const [facialScanTarget, setFacialScanTarget] = useState(null);
+  const [activeWhatsappReminder, setActiveWhatsappReminder] = useState(null);
+  const [isAddingPortalEnrollment, setIsAddingPortalEnrollment] = useState(false);
+  const [activePortalEnrollmentReview, setActivePortalEnrollmentReview] = useState(null);
+
+  const handleSimulateFacialScan = (type) => {
+    setFacialScanStatus('scanning');
+    setFacialScanTarget(null);
+
+    setTimeout(() => {
+      if (type === 'arthur') {
+        setFacialScanStatus('matched');
+        setFacialScanTarget({ name: 'Arthur Ramos', avatar: 'arthur' });
+        setSelectedDoormanStudentId(1); // Seleciona Arthur Ramos
+        alert("Reconhecimento Facial: Arthur Ramos identificado. Liberação de saída disponível.");
+      } else if (type === 'beatriz') {
+        setFacialScanStatus('matched');
+        setFacialScanTarget({ name: 'Beatriz Ramos', avatar: 'beatriz' });
+        setSelectedDoormanStudentId(2); // Seleciona Beatriz Ramos
+        alert("Reconhecimento Facial: Beatriz Ramos identificada. Liberação de saída disponível.");
+      } else {
+        setFacialScanStatus('alert');
+        alert("ALERTA DE SEGURANÇA: Rosto desconhecido detectado na portaria da escola!");
+      }
+    }, 2000);
+  };
+
+  const handleTriggerWhatsappReminder = (parentName, studentName, value) => {
+    setActiveWhatsappReminder({
+      parentName,
+      studentName,
+      value: value.toFixed(2),
+      message: `Prezado(a) ${parentName}, identificamos que a mensalidade do aluno(a) ${studentName} no valor de R$ ${value.toFixed(2)} está pendente de regularização. Segue o código PIX de pagamento copia e cola: 00020101021126580014br.gov.bcb.pix013665a3952f-1049-410a-ba62-a3952f1049c4. Agradecemos a atenção!`
+    });
+  };
 
   // === ESTADO DE FILHOS SELECIONADOS (PAIS) ===
   const [selectedChildId, setSelectedChildId] = useState(1); // Arthur (1) ou Beatriz (2)
@@ -265,9 +703,7 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
     }
   ]);
 
-  const [enrollments, setEnrollments] = useState([
-    { id: 1, studentName: "Henrique Ramos", classRequested: "1º Ano", parentName: "Ivan Ramos", status: "Pendente" }
-  ]);
+
 
   const [certificates, setCertificates] = useState([]);
 
@@ -593,6 +1029,11 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                 </button>
               </li>
               <li>
+                <button className={`sidebar-menu-btn ${activeTab === 'nova_matricula' ? 'active' : ''}`} onClick={() => setActiveTab('nova_matricula')}>
+                  <UserPlus size={18} /> Matrícula Online
+                </button>
+              </li>
+              <li>
                 <button className={`sidebar-menu-btn ${activeTab === 'autorizados' ? 'active' : ''}`} onClick={() => setActiveTab('autorizados')}>
                   <Users size={18} /> Autorizados a Retirar
                 </button>
@@ -603,6 +1044,15 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                 </button>
               </li>
             </>
+          )}
+
+          {/* FINANCEIRO DIRETOR (manager) */}
+          {currentRole === 'manager' && (
+            <li>
+              <button className={`sidebar-menu-btn ${activeTab === 'financeiro' ? 'active' : ''}`} onClick={() => setActiveTab('financeiro')}>
+                <DollarSign size={18} /> Financeiro Escolar
+              </button>
+            </li>
           )}
 
           {/* SECRETARIA (manager / teacher) */}
@@ -1063,6 +1513,80 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                     </div>
                   </div>
 
+                  {/* ANÁLISE DE INTELIGÊNCIA PEDAGÓGICA */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                    
+                    {/* Gráfico SVG de Habilidades / Radar */}
+                    <div className="app-card" style={{ marginBottom: 0 }}>
+                      <h3 className="app-card-title"><TrendingUp size={18} style={{ color: 'var(--primary-color)' }} /> Competências e Habilidades</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                        Comparação das competências cognitivas e socioemocionais de {activeChild.name} em relação à média esperada.
+                      </p>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '180px' }}>
+                        <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', maxWidth: '180px' }}>
+                          {/* Desenha polígonos concêntricos do radar de 5 lados */}
+                          <polygon points="100,20 180,75 150,165 50,165 20,75" fill="none" stroke="#f1f5f9" strokeWidth="1" />
+                          <polygon points="100,50 160,90 137.5,150 62.5,150 40,90" fill="none" stroke="#e2e8f0" strokeWidth="1" />
+                          <polygon points="100,80 140,105 125,135 75,135 60,105" fill="none" stroke="#cbd5e1" strokeWidth="1" />
+                          
+                          {/* Linhas de eixo */}
+                          <line x1="100" y1="100" x2="100" y2="20" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                          <line x1="100" y1="100" x2="180" y2="75" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                          <line x1="100" y1="100" x2="150" y2="165" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                          <line x1="100" y1="100" x2="50" y2="165" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+                          <line x1="100" y1="100" x2="20" y2="75" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2" />
+
+                          {/* Rótulos das Habilidades */}
+                          <text x="100" y="15" fill="#64748b" fontSize="8" textAnchor="middle" fontWeight="bold">Pensamento Crítico</text>
+                          <text x="190" y="78" fill="#64748b" fontSize="8" textAnchor="start" fontWeight="bold">Colaboração</text>
+                          <text x="155" y="178" fill="#64748b" fontSize="8" textAnchor="start" fontWeight="bold">Comunicação</text>
+                          <text x="45" y="178" fill="#64748b" fontSize="8" textAnchor="end" fontWeight="bold">Criatividade</text>
+                          <text x="10" y="78" fill="#64748b" fontSize="8" textAnchor="end" fontWeight="bold">Autonomia</text>
+
+                          {/* Polígono de desempenho do aluno */}
+                          {selectedChildId === 1 ? (
+                            // Arthur: Forte em pensamento crítico e colaboração, menor em comunicação
+                            <polygon points="100,35 172,80 137.5,148 57.5,152 32,82" fill="rgba(37, 99, 235, 0.25)" stroke="var(--primary-color)" strokeWidth="2" />
+                          ) : (
+                            // Beatriz: Forte em criatividade e comunicação, menor em autonomia
+                            <polygon points="100,55 152,95 142.5,155 60.5,152 26,86" fill="rgba(219, 39, 119, 0.25)" stroke="#db2777" strokeWidth="2" />
+                          )}
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Recomendações Pedagógicas e Habilidades Socioemocionais */}
+                    <div className="app-card" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
+                      <h3 className="app-card-title"><Brain size={18} style={{ color: 'var(--primary-color)' }} /> Recomendação & IA Pedagógica</h3>
+                      
+                      {selectedChildId === 1 ? (
+                        <>
+                          <div style={{ backgroundColor: 'var(--primary-light)', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid var(--primary-color)', fontSize: '0.8rem' }}>
+                            <strong>Sugestão de Prática (Matemática):</strong> <br />
+                            Arthur obteve média semestral de 7.75. Recomendamos focar no tópico de *Operações com Frações e Decimais*. Acesse as atividades sugeridas na aba "Envios" para praticar em casa.
+                          </div>
+                          <div style={{ backgroundColor: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid var(--success)', fontSize: '0.8rem' }}>
+                            <strong>Destaque Socioemocional:</strong> <br />
+                            Identificamos altos níveis de **Colaboração** e **Pensamento Crítico** nos trabalhos de grupo em Ciências. Arthur demonstra liderança positiva em sala de aula.
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ backgroundColor: 'var(--primary-light)', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid var(--primary-color)', fontSize: '0.8rem' }}>
+                            <strong>Sugestão de Prática (Matemática):</strong> <br />
+                            Beatriz está com média semestral 6.75 (próxima da nota de corte 6.0). Recomendamos exercitar a tabuada através do jogo de matemática lúdico disponível na Central de Jogos da escola.
+                          </div>
+                          <div style={{ backgroundColor: '#fdf2f8', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid #db2777', fontSize: '0.8rem' }}>
+                            <strong>Destaque Socioemocional:</strong> <br />
+                            A Beatriz destaca-se pela **Criatividade** e **Comunicação**. Seus trabalhos artísticos e apresentações orais estão entre os mais criativos do 1º Ano B.
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                  </div>
+
                 </div>
               ) : (
                 /* VISÃO DO PROFESSOR (CHAMADA) */
@@ -1158,6 +1682,75 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                 </p>
               </div>
 
+              {/* ROTINA DIÁRIA MATERNAL/CRECHE (Beatriz Ramos - ID 2) */}
+              {selectedChildId === 2 && (
+                <div className="app-card" style={{ marginBottom: '1.5rem' }}>
+                  <h3 className="app-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Layers size={18} style={{ color: 'var(--primary-color)' }} />
+                    Rotina Diária e Acompanhamento Escolar - Beatriz Ramos
+                  </h3>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Acompanhe em tempo real a alimentação, sono e higiene da Beatriz hoje.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ backgroundColor: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid var(--success)' }}>
+                      <strong style={{ fontSize: '0.8rem', color: '#166534', display: 'block' }}>🍎 Alimentação</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'block', marginTop: '0.25rem' }}>
+                        <strong>Almoço:</strong> Comeu tudo! (Arroz, feijão, frango e legumes)
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'block', marginTop: '0.15rem' }}>
+                        <strong>Lanche da Tarde:</strong> Comeu tudo! (Salada de frutas e suco)
+                      </span>
+                    </div>
+
+                    <div style={{ backgroundColor: 'var(--primary-light)', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid var(--primary-color)' }}>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--primary-color)', display: 'block' }}>😴 Sono e Repouso</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'block', marginTop: '0.25rem' }}>
+                        <strong>Horário:</strong> Dormiu das 13:10 às 14:15.
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'block', marginTop: '0.15rem' }}>
+                        <strong>Comportamento:</strong> Dormiu tranquila e acordou bem-humorada.
+                      </span>
+                    </div>
+
+                    <div style={{ backgroundColor: '#fffbeb', padding: '0.75rem', borderRadius: '8px', borderLeft: '3px solid var(--warning)' }}>
+                      <strong style={{ fontSize: '0.8rem', color: '#d97706', display: 'block' }}>🚽 Higiene e Bem-estar</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'block', marginTop: '0.25rem' }}>
+                        <strong>Higiene:</strong> Utilizou o banheiro 3 vezes de forma autônoma.
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', display: 'block', marginTop: '0.15rem' }}>
+                        <strong>Observação:</strong> Lavou as mãos corretamente.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem' }}>
+                    <strong style={{ fontSize: '0.8rem', display: 'block', marginBottom: '0.5rem' }}>🎨 Galeria de Fotos e Atividades Pedagógicas do Dia</strong>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                        <div style={{ height: '80px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: '1.5rem' }}>🎨</span>
+                        </div>
+                        <div style={{ padding: '0.5rem' }}>
+                          <strong style={{ fontSize: '0.75rem', display: 'block' }}>Pintura Temática</strong>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Beatriz pintando a árvore sobre meio ambiente.</span>
+                        </div>
+                      </div>
+                      <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                        <div style={{ height: '80px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: '1.5rem' }}>🧸</span>
+                        </div>
+                        <div style={{ padding: '0.5rem' }}>
+                          <strong style={{ fontSize: '0.75rem', display: 'block' }}>Hora da Roda</strong>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Beatriz e colegas na dinâmica de contação de histórias.</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Form de Medicação */}
               <div className="app-card" style={{ marginBottom: '1.5rem' }}>
                 <h3 className="app-card-title"><BookOpen size={18} /> Recado de Saúde para o Professor</h3>
@@ -1229,6 +1822,223 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input type="text" className="form-input" placeholder="Digite uma dúvida..." value={chatInput} onChange={e => setChatInput(e.target.value)} />
                   <button className="btn btn-primary" onClick={handleSendMessage}>Enviar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: MATRÍCULA ONLINE (RESPONSÁVEL) */}
+          {activeTab === 'nova_matricula' && currentRole === 'parent' && (
+            <div className="online-enrollment-parent-section">
+              <div className="welcome-gradient-banner" style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem' }}>Matrícula Online</h3>
+                <p style={{ opacity: 0.9, fontSize: '0.85rem' }}>
+                  Acompanhe o andamento das solicitações de matrícula dos seus filhos ou inicie uma nova inscrição de forma 100% digital.
+                </p>
+              </div>
+
+              {isAddingPortalEnrollment ? (
+                <div className="app-card" style={{ padding: '0.5rem' }}>
+                  <button className="btn btn-secondary" style={{ marginBottom: '1rem' }} onClick={() => setIsAddingPortalEnrollment(false)}>
+                    ← Voltar para Solicitações
+                  </button>
+                  <OnlineEnrollmentWizard 
+                    onBack={() => setIsAddingPortalEnrollment(false)}
+                    onSaveEnrollment={(newEnroll) => {
+                      setEnrollments(prev => [...prev, newEnroll]);
+                      setIsAddingPortalEnrollment(false);
+                      alert("Solicitação de matrícula enviada com sucesso para a secretaria!");
+                    }}
+                    classes={schoolData.classes}
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Botão de Nova Inscrição */}
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ marginBottom: '1.5rem' }}
+                    onClick={() => setIsAddingPortalEnrollment(true)}
+                  >
+                    + Iniciar Nova Matrícula de Filho / Irmão
+                  </button>
+
+                  {/* Listagem de Pré-Matrículas de Ivan Ramos */}
+                  <div className="app-card">
+                    <h3 className="app-card-title"><ClipboardList size={18} /> Solicitações de Matrícula</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {enrollments.filter(e => e.parentName === 'Ivan Ramos').map(enroll => (
+                        <div 
+                          key={enroll.id} 
+                          style={{ 
+                            padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#f8fafc',
+                            borderLeft: '4px solid',
+                            borderLeftColor: enroll.status === 'Aprovada' ? 'var(--success)' : enroll.status === 'Rejeitado' || enroll.status === 'Em Ajuste' ? 'var(--danger)' : 'var(--warning)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div>
+                              <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{enroll.studentName}</strong>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.15rem' }}>
+                                Série: {enroll.classRequested} | Protocolo: <strong>{enroll.protocol}</strong>
+                              </span>
+                            </div>
+                            <span className={`status-badge ${enroll.status === 'Aprovada' ? 'success' : enroll.status === 'Pendente' ? 'warning' : 'danger'}`}>
+                              {enroll.status === 'Pendente' ? 'Aguardando Revisão' : enroll.status === 'Aprovada' ? 'Matrícula Aprovada' : 'Ajustes Pendentes'}
+                            </span>
+                          </div>
+                          
+                          {enroll.feedback && (
+                            <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', borderLeft: '2px solid var(--danger)', fontSize: '0.75rem', color: '#b91c1c', borderRadius: '4px' }}>
+                              <strong>Parecer da Secretaria:</strong> {enroll.feedback}
+                              <button 
+                                className="btn btn-primary" 
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', marginTop: '0.5rem', display: 'block', backgroundColor: 'var(--danger)', borderColor: 'var(--danger)' }}
+                                onClick={() => alert("Simulando reenvio de documento corrigido...")}
+                              >
+                                Resolver Pendência
+                              </button>
+                            </div>
+                          )}
+
+                          {enroll.status === 'Aprovada' && (
+                            <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', backgroundColor: '#f0fdf4', borderLeft: '2px solid var(--success)', fontSize: '0.75rem', color: '#166534', borderRadius: '4px' }}>
+                              <strong>Matrícula Confirmada!</strong> O aluno Henrique Ramos já foi alocado em sua sala de aula e adicionado ao seu painel.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* TAB: FINANCEIRO (DIRETORIA) */}
+          {activeTab === 'financeiro' && currentRole === 'manager' && (
+            <div className="finance-director-section">
+              <div className="welcome-gradient-banner" style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem' }}>Gestão Financeira & Previsibilidade</h3>
+                <p style={{ opacity: 0.9, fontSize: '0.85rem' }}>
+                  Acompanhe em tempo real o fluxo de caixa, inadimplência e faturamento recorrente.
+                </p>
+              </div>
+
+              {/* Cards de Metricas */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div className="app-card" style={{ marginBottom: 0 }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>MRR (Mensal Recorrente)</span>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem', color: 'var(--primary-color)' }}>R$ 145.200,00</h2>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--success)' }}>✓ +4.2% em relação ao mês anterior</span>
+                </div>
+                <div className="app-card" style={{ marginBottom: 0 }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Taxa de Inadimplência</span>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem', color: 'var(--danger)' }}>12.4%</h2>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Média nacional: 15%</span>
+                </div>
+                <div className="app-card" style={{ marginBottom: 0 }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Caixa Atual Escolar</span>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem', color: 'var(--success)' }}>R$ 89.430,00</h2>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Saldo operacional líquido</span>
+                </div>
+              </div>
+
+              {/* Graficos Financeiros em SVG */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1.5fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                {/* Grafico de Linha de Faturamento */}
+                <div className="app-card" style={{ marginBottom: 0 }}>
+                  <h3 className="app-card-title">Faturamento Histórico Semestral (R$)</h3>
+                  <div style={{ width: '100%', height: '200px', marginTop: '1.5rem' }}>
+                    <svg viewBox="0 0 500 200" style={{ width: '100%', height: '100%' }}>
+                      {/* Grid Lines */}
+                      <line x1="40" y1="20" x2="480" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+                      <line x1="40" y1="70" x2="480" y2="70" stroke="#f1f5f9" strokeWidth="1" />
+                      <line x1="40" y1="120" x2="480" y2="120" stroke="#f1f5f9" strokeWidth="1" />
+                      <line x1="40" y1="170" x2="480" y2="170" stroke="#e2e8f0" strokeWidth="2" />
+                      
+                      {/* Axis Labels */}
+                      <text x="15" y="25" fill="#94a3b8" fontSize="10">160k</text>
+                      <text x="15" y="75" fill="#94a3b8" fontSize="10">120k</text>
+                      <text x="15" y="125" fill="#94a3b8" fontSize="10">80k</text>
+                      <text x="15" y="175" fill="#94a3b8" fontSize="10">40k</text>
+
+                      {/* Months */}
+                      <text x="50" y="190" fill="#64748b" fontSize="10" textAnchor="middle">Jan</text>
+                      <text x="130" y="190" fill="#64748b" fontSize="10" textAnchor="middle">Fev</text>
+                      <text x="210" y="190" fill="#64748b" fontSize="10" textAnchor="middle">Mar</text>
+                      <text x="290" y="190" fill="#64748b" fontSize="10" textAnchor="middle">Abr</text>
+                      <text x="370" y="190" fill="#64748b" fontSize="10" textAnchor="middle">Mai</text>
+                      <text x="450" y="190" fill="#64748b" fontSize="10" textAnchor="middle">Jun</text>
+
+                      {/* Line & Area Chart */}
+                      <path d="M 50 145 L 130 135 L 210 115 L 290 90 L 370 70 L 450 35 L 450 170 L 50 170 Z" fill="rgba(37, 99, 235, 0.08)" />
+                      <path d="M 50 145 L 130 135 L 210 115 L 290 90 L 370 70 L 450 35" fill="none" stroke="var(--primary-color)" strokeWidth="3" strokeLinecap="round" />
+                      
+                      {/* Dots on Data Points */}
+                      <circle cx="50" cy="145" r="5" fill="var(--primary-color)" />
+                      <circle cx="130" cy="135" r="5" fill="var(--primary-color)" />
+                      <circle cx="210" cy="115" r="5" fill="var(--primary-color)" />
+                      <circle cx="290" cy="90" r="5" fill="var(--primary-color)" />
+                      <circle cx="370" cy="70" r="5" fill="var(--primary-color)" />
+                      <circle cx="450" cy="35" r="5" fill="var(--primary-color)" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Grafico de Pizza de Adimplencia */}
+                <div className="app-card" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <h3 className="app-card-title">Taxa de Adimplência Geral</h3>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '140px' }}>
+                    <svg viewBox="0 0 100 100" style={{ width: '100px', height: '100px' }}>
+                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--danger)" strokeWidth="20" />
+                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--success)" strokeWidth="20" strokeDasharray="220 251" strokeDashoffset="0" />
+                    </svg>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.75rem', marginTop: '1rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--success)' }}></span>
+                      Adimplente (87.6%)
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--danger)' }}></span>
+                      Inadimplente (12.4%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabela de Inadimplencia com Alertas */}
+              <div className="app-card">
+                <h3 className="app-card-title">Mensalidades Atrasadas - Ações de Cobrança</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  Selecione um responsável para simular o disparo de lembrete amigável via WhatsApp.
+                </p>
+                
+                <div className="list-group-app">
+                  {[
+                    { id: 1, parent: "Ivan Ramos", student: "Beatriz Ramos", class: "1º Ano B", value: 720.00, dueDate: "10/07/2026", daysOverdue: 1 },
+                    { id: 2, parent: "José Silva", student: "Lucas Silva", class: "5º Ano A", value: 850.00, dueDate: "10/06/2026", daysOverdue: 31 }
+                  ].map(inad => (
+                    <div key={inad.id} className="list-item-app" style={{ cursor: 'default' }}>
+                      <div className="list-item-app-content">
+                        <div className="list-item-app-icon" style={{ backgroundColor: '#fef2f2', color: 'var(--danger)' }}><AlertTriangle size={16} /></div>
+                        <div>
+                          <span className="list-item-app-title">Responsável: {inad.parent} (Aluno: {inad.student})</span>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                            Valor pendente: <strong>R$ {inad.value.toFixed(2)}</strong> | Vencimento: {inad.dueDate} ({inad.daysOverdue} dias de atraso)
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', backgroundColor: '#25d366', borderColor: '#25d366', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                        onClick={() => handleTriggerWhatsappReminder(inad.parent, inad.student, inad.value)}
+                      >
+                        <MessageSquare size={14} /> Cobrar WhatsApp
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1330,21 +2140,32 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                     <h3 className="app-card-title">Novos Pedidos de Matrícula</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {enrollments.map(e => (
-                        <div key={e.id} style={{ padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '0.8rem' }}>
-                          <strong>Estudante:</strong> {e.studentName} <br />
-                          <strong>Série:</strong> {e.classRequested} <br />
-                          <strong>Responsável:</strong> {e.parentName} <br />
-                          <strong>Status:</strong> {e.status}
-                          {e.status === 'Pendente' && (
-                            <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.5rem' }}>
-                              <button className="btn btn-primary" style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }} onClick={() => {
-                                setEnrollments(prev => prev.map(item => item.id === e.id ? { ...item, status: 'Aprovada' } : item));
-                                const newStud = { id: schoolData.students.length + 1, name: e.studentName, class: e.classRequested, parentName: e.parentName, attendance: "Presente", docStatus: "Ok" };
-                                setSchoolData(prev => ({ ...prev, students: [...prev.students, newStud] }));
-                                alert("Matrícula aprovada!");
-                              }}>Aprovar</button>
-                            </div>
-                          )}
+                        <div key={e.id} style={{ padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Protocolo: {e.protocol || 'MAT-2026-10492'}</span>
+                            <strong style={{ fontSize: '0.9rem', display: 'block', color: 'var(--text-main)', marginTop: '0.15rem' }}>{e.studentName}</strong>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              Responsável: <strong>{e.parentName}</strong> | Série solicitada: <strong>{e.classRequested}</strong>
+                            </span>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span className={`status-badge ${e.status === 'Aprovada' ? 'success' : e.status === 'Pendente' ? 'warning' : 'danger'}`}>
+                              {e.status}
+                            </span>
+                            
+                            {(e.status === 'Pendente' || e.status === 'Em Ajuste') && (
+                              <button 
+                                className="btn btn-primary" 
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} 
+                                onClick={() => {
+                                  setActivePortalEnrollmentReview(e);
+                                }}
+                              >
+                                Analisar Ficha
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1459,7 +2280,83 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                 </div>
 
                 {/* COLUNA DIREITA: DETALHE DE VALIDAÇÃO VISUAL */}
-                <div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  
+                  {/* SIMULADOR DE RECONHECIMENTO FACIAL */}
+                  <div className="app-card" style={{ padding: '1rem', marginBottom: 0 }}>
+                    <h4 style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <Camera size={16} style={{ color: 'var(--primary-color)' }} /> 
+                      Simulador de Reconhecimento Facial (Portaria IA)
+                    </h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'center' }}>
+                      {/* Câmera Feed Animada */}
+                      <div className="facial-cam-feed" style={{
+                        position: 'relative',
+                        aspectRatio: '4/3',
+                        backgroundColor: '#0f172a',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: '2px solid var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#94a3b8'
+                      }}>
+                        {/* Scan Line Animation */}
+                        <div className="facial-cam-scan-line"></div>
+                        
+                        {facialScanStatus === 'scanning' ? (
+                          <div style={{ textAlign: 'center', zIndex: 2 }}>
+                            <div className="facial-scanner-target"></div>
+                            <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600, display: 'block', marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Analisando...
+                            </span>
+                          </div>
+                        ) : facialScanStatus === 'matched' ? (
+                          <div style={{ textAlign: 'center', zIndex: 2 }}>
+                            <Avatar type={facialScanTarget.avatar} size={50} style={{ border: '2px solid var(--success)', margin: '0 auto' }} />
+                            <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 700, display: 'block', marginTop: '0.25rem', textTransform: 'uppercase' }}>
+                              Rosto Identificado
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#ffffff', fontWeight: 600 }}>
+                              {facialScanTarget.name}
+                            </span>
+                          </div>
+                        ) : facialScanStatus === 'alert' ? (
+                          <div style={{ textAlign: 'center', zIndex: 2 }}>
+                            <AlertTriangle size={30} style={{ color: 'var(--danger)', display: 'block', margin: '0 auto' }} />
+                            <span style={{ fontSize: '0.7rem', color: 'var(--danger)', fontWeight: 700, display: 'block', marginTop: '0.25rem', textTransform: 'uppercase' }}>
+                              Alerta de Segurança
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#ffffff', fontWeight: 600 }}>
+                              Visitante Desconhecido
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', zIndex: 2 }}>
+                            <Shield size={30} style={{ opacity: 0.3, display: 'block', margin: '0 auto 0.5rem auto' }} />
+                            <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Câmera Monitoramento</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Controles de Simulação */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Simular Entrada/Saída</span>
+                        <button className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', display: 'flex', justifyContent: 'flex-start', width: '100%' }} onClick={() => handleSimulateFacialScan('arthur')}>
+                          👤 Arthur Ramos
+                        </button>
+                        <button className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', display: 'flex', justifyContent: 'flex-start', width: '100%' }} onClick={() => handleSimulateFacialScan('beatriz')}>
+                          👤 Beatriz Ramos
+                        </button>
+                        <button className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', display: 'flex', justifyContent: 'flex-start', color: 'var(--danger)', borderColor: '#fee2e2', width: '100%' }} onClick={() => handleSimulateFacialScan('unknown')}>
+                          ⚠️ Desconhecido
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {(() => {
                     const stud = schoolData.students.find(s => s.id === selectedDoormanStudentId);
                     if (!stud) {
@@ -2399,12 +3296,177 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
                   width: '100%'
                 }}
                 onClick={() => {
+                  setActiveTab('nova_matricula');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <UserPlus size={18} style={{ color: 'var(--primary-color)' }} />
+                <span>Matrícula Online</span>
+              </button>
+
+              <button 
+                className="btn btn-secondary" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem', 
+                  justifyContent: 'flex-start',
+                  padding: '1rem',
+                  fontSize: '0.9rem',
+                  width: '100%'
+                }}
+                onClick={() => {
                   setActiveTab('documentos');
                   setIsMobileMenuOpen(false);
                 }}
               >
                 <FileText size={18} style={{ color: 'var(--primary-color)' }} />
                 <span>Central de Documentos</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REMINDER WHATSAPP COBRANÇA */}
+      {activeWhatsappReminder && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={() => setActiveWhatsappReminder(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <MessageSquare size={20} style={{ color: '#25d366' }} /> Cobrança WhatsApp (Demonstração)
+              </h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setActiveWhatsappReminder(null)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Pré-visualização do lembrete de mensalidade que será enviado para <strong>{activeWhatsappReminder.parentName}</strong>:
+              </p>
+              <div style={{ backgroundColor: '#efeae2', borderRadius: '8px', padding: '1rem', border: '1px solid #d1d7db', fontFamily: 'system-ui, sans-serif', color: '#111b21', backgroundImage: 'radial-gradient(circle, #e5ddd5 10%, transparent 11%)', backgroundSize: '10px 10px' }}>
+                <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', padding: '0.75rem', maxWidth: '90%', fontSize: '0.85rem', boxShadow: '0 1px 0.5px rgba(11,20,26,.13)', position: 'relative' }}>
+                  {activeWhatsappReminder.message}
+                  <span style={{ display: 'block', fontSize: '0.65rem', color: '#667781', textAlign: 'right', marginTop: '0.25rem' }}>Agora</span>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => setActiveWhatsappReminder(null)}>Cancelar</button>
+              <button 
+                className="btn btn-primary" 
+                style={{ backgroundColor: '#25d366', borderColor: '#25d366' }}
+                onClick={() => {
+                  alert(`Lembrete amigável enviado com sucesso para ${activeWhatsappReminder.parentName}!`);
+                  setActiveWhatsappReminder(null);
+                }}
+              >
+                Disparar Lembrete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL AUDITORIA DE MATRÍCULA ONLINE (SECRETARIA) */}
+      {activePortalEnrollmentReview && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={() => setActivePortalEnrollmentReview(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+            <div className="modal-header">
+              <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <ClipboardList size={20} style={{ color: 'var(--primary-color)' }} /> 
+                Auditoria de Pré-Matrícula: {activePortalEnrollmentReview.protocol}
+              </h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setActivePortalEnrollmentReview(null)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '450px', overflowY: 'auto' }}>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Dados do Aluno</span>
+                  <strong style={{ fontSize: '0.9rem', display: 'block', marginTop: '0.15rem' }}>{activePortalEnrollmentReview.studentName}</strong>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Nasc: {activePortalEnrollmentReview.studentBirth || '10/04/2020'} | Gênero: {activePortalEnrollmentReview.studentGender || 'Masculino'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Dados do Responsável</span>
+                  <strong style={{ fontSize: '0.9rem', display: 'block', marginTop: '0.15rem' }}>{activePortalEnrollmentReview.parentName}</strong>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    CPF: {activePortalEnrollmentReview.parentCpf || '123.456.789-00'} | Tel: {activePortalEnrollmentReview.parentPhone || '(11) 99999-8888'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Documentos Carregados via OCR</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.35rem' }}>
+                  {Object.entries(activePortalEnrollmentReview.docs || {}).map(([key, doc]) => (
+                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: '#ffffff', fontSize: '0.8rem' }}>
+                      <span>📁 <strong>{key === 'certidao' ? 'Certidão' : key === 'rg' ? 'RG/CNH' : 'Residência'}:</strong> {doc.name || 'documento.pdf'}</span>
+                      <span style={{ color: 'var(--success)', fontWeight: 700 }}>✓ Validado</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Assinatura do Contrato Escolar</span>
+                <div style={{ padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: '#fafafa', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '1.05rem' }}>
+                  {activePortalEnrollmentReview.signature || activePortalEnrollmentReview.parentName}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700 }}>Parecer da Secretaria (Caso necessite de correções/ajustes)</label>
+                <textarea 
+                  className="form-textarea" 
+                  rows={2} 
+                  value={docReviewFeedback}
+                  onChange={e => setDocReviewFeedback(e.target.value)}
+                  placeholder="Ex: Por favor, reenvie o comprovante de residência legível..."
+                />
+              </div>
+
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ color: 'var(--danger)', borderColor: '#fecaca', flex: 1 }}
+                onClick={() => {
+                  if (!docReviewFeedback.trim()) {
+                    alert("Por favor, preencha o Parecer descrevendo o motivo de solicitar ajustes.");
+                    return;
+                  }
+                  setEnrollments(prev => prev.map(item => item.id === activePortalEnrollmentReview.id ? { ...item, status: 'Em Ajuste', feedback: docReviewFeedback } : item));
+                  setDocReviewFeedback('');
+                  setActivePortalEnrollmentReview(null);
+                  alert("Solicitação alterada para 'Em Ajuste'. O responsável foi notificado.");
+                }}
+              >
+                Solicitar Ajustes
+              </button>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1 }}
+                onClick={() => {
+                  setEnrollments(prev => prev.map(item => item.id === activePortalEnrollmentReview.id ? { ...item, status: 'Aprovada', feedback: null } : item));
+                  
+                  // Instanciar novo estudante na lista escolar
+                  const newStud = {
+                    id: schoolData.students.length + 1,
+                    name: activePortalEnrollmentReview.studentName,
+                    class: activePortalEnrollmentReview.classRequested,
+                    parentName: activePortalEnrollmentReview.parentName,
+                    attendance: "Presente",
+                    docStatus: "Ok"
+                  };
+                  setSchoolData(prev => ({ ...prev, students: [...prev.students, newStud] }));
+                  
+                  setDocReviewFeedback('');
+                  setActivePortalEnrollmentReview(null);
+                  alert(`Matrícula de ${activePortalEnrollmentReview.studentName} homologada com sucesso e adicionada à base escolar!`);
+                }}
+              >
+                Aprovar Matrícula
               </button>
             </div>
           </div>
@@ -2418,6 +3480,32 @@ export function AppPortal({ onBackToLanding, schoolConfig, setSchoolConfig, scho
 export default function App() {
   const [route, setRoute] = useState('landing');
   const [onboardingStep, setOnboardingStep] = useState(1);
+
+  const [enrollments, setEnrollments] = useState([
+    { 
+      id: 1, 
+      protocol: "MAT-2026-10492",
+      studentName: "Henrique Ramos", 
+      classRequested: "1º Ano B", 
+      parentName: "Ivan Ramos", 
+      parentCpf: "123.456.789-00",
+      parentPhone: "(11) 99999-8888",
+      parentEmail: "ivan.ramos@email.com",
+      parentAddress: "Rua das Flores, 123 - São Paulo",
+      studentBirth: "10/04/2020",
+      studentGender: "Masculino",
+      prevSchool: "Creche Pequenos Passos",
+      specialNeeds: "Não",
+      docs: {
+        certidao: { name: "certidao_henrique.pdf", size: "180 KB", status: "Validado" },
+        rg: { name: "rg_ivan.pdf", size: "120 KB", status: "Validado" },
+        residencia: { name: "comprovante_residencia.pdf", size: "210 KB", status: "Validado" }
+      },
+      signature: "Ivan Ramos",
+      status: "Pendente",
+      dateSubmitted: "10/07/2026"
+    }
+  ]);
 
   // === ESTADOS DO ONBOARDING DO CLIENTE ===
   const [schoolConfig, setSchoolConfig] = useState({
@@ -2490,7 +3578,21 @@ export default function App() {
       {route === 'landing' && (
         <LandingPage 
           onEnterApp={() => setRoute('login')} 
+          onOpenEnrollment={() => setRoute('matricula_online')}
         />
+      )}
+
+      {/* ROTA PÚBLICA DE MATRÍCULA ONLINE */}
+      {route === 'matricula_online' && (
+        <div className="auth-wrapper" style={{ padding: '2rem 1rem', overflowY: 'auto' }}>
+          <OnlineEnrollmentWizard 
+            onBack={() => setRoute('landing')}
+            onSaveEnrollment={(newEnrollment) => {
+              setEnrollments(prev => [...prev, newEnrollment]);
+            }}
+            classes={schoolData.classes}
+          />
+        </div>
       )}
 
       {/* 2. TELA DE LOGIN */}
@@ -2757,6 +3859,8 @@ export default function App() {
           schoolData={schoolData}
           setSchoolData={setSchoolData}
           onBackToLanding={() => setRoute('landing')}
+          enrollments={enrollments}
+          setEnrollments={setEnrollments}
         />
       )}
 

@@ -12,7 +12,7 @@ import {
   Star
 } from 'lucide-react';
 
-export default function LandingPage({ onEnterApp }) {
+export default function LandingPage({ onEnterApp, onOpenEnrollment }) {
   return (
     <div className="landing-container" style={{ backgroundColor: '#ffffff', minHeight: '100vh', color: '#0f172a', fontFamily: 'system-ui, sans-serif' }}>
       
@@ -32,13 +32,19 @@ export default function LandingPage({ onEnterApp }) {
           <Cloud size={24} />
           <span>EduCloud</span>
         </div>
-        <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+        <nav style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
           <a href="#funcionalidades" style={{ textDecoration: 'none', color: '#475569', fontSize: '0.95rem', fontWeight: 500 }}>Funcionalidades</a>
           <a href="#precos" style={{ textDecoration: 'none', color: '#475569', fontSize: '0.95rem', fontWeight: 500 }}>Planos</a>
-          <a href="#mobile" style={{ textDecoration: 'none', color: '#475569', fontSize: '0.95rem', fontWeight: 500 }}>Aplicativo</a>
+          <button 
+            className="btn btn-secondary" 
+            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', color: '#0284c7', borderColor: '#0284c7' }}
+            onClick={onOpenEnrollment}
+          >
+            Matrícula Online 2026
+          </button>
           <button 
             className="btn btn-primary" 
-            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', backgroundColor: '#0284c7', borderColor: '#0284c7' }}
             onClick={onEnterApp}
           >
             Acessar Portal Demo <ArrowRight size={16} />
@@ -88,17 +94,21 @@ export default function LandingPage({ onEnterApp }) {
         }}>
           Ofereça um portal completo para Pais, Professores e Alunos. Personalize as cores, envie comunicados, controle notas e emita boletos automáticos. Tudo sob o seu próprio domínio.
         </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <button 
             className="btn btn-primary" 
-            style={{ padding: '0.75rem 1.5rem', fontSize: '1.05rem' }}
+            style={{ padding: '0.75rem 1.5rem', fontSize: '1.05rem', backgroundColor: '#0284c7', borderColor: '#0284c7' }}
             onClick={onEnterApp}
           >
             Experimentar Demonstração
           </button>
-          <a href="#precos" className="btn btn-secondary" style={{ padding: '0.75rem 1.5rem', fontSize: '1.05rem', textDecoration: 'none' }}>
-            Ver Planos e Preços
-          </a>
+          <button 
+            className="btn btn-secondary" 
+            style={{ padding: '0.75rem 1.5rem', fontSize: '1.05rem', color: '#0284c7', borderColor: '#0284c7', backgroundColor: '#f0f9ff' }}
+            onClick={onOpenEnrollment}
+          >
+            Realizar Matrícula Online
+          </button>
         </div>
       </section>
 
